@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dataConfig>
+    <dataSource driver="com.microsoft.sqlserver.jdbc.SQLServerDriver" url="jdbc:sqlserver://localhost;databaseName=solr_export;user=sa;password=P@ssword123;" batchSize="10000" responseBuffering="adaptive" selectMethod="cursor"/>
+    <document>
+        <entity pk="Id" name="MyCore2" query="SELECT * FROM MyCore2;"/>
+    </document>
+</dataConfig>
