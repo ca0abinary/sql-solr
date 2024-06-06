@@ -44,7 +44,7 @@ services:
       retries: 720 # wait for up to 2 hours
       start_period: 30s
 
-  load_mycore1:
+  load_mycore1: &load_core
     build:
       context: .
       dockerfile: net-tools.dockerfile
