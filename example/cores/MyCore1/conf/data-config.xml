@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <dataConfig>
-    <dataSource driver="com.microsoft.sqlserver.jdbc.SQLServerDriver" url="jdbc:sqlserver://localhost;databaseName=solr_export;user=sa;password=P@ssword123;" batchSize="10000" responseBuffering="adaptive" selectMethod="cursor"/>
+    <dataSource driver="com.microsoft.sqlserver.jdbc.SQLServerDriver" url="jdbc:sqlserver://mssql;databaseName=solr_export;user=sa;password=P@ssword123;" batchSize="10000" responseBuffering="adaptive" selectMethod="cursor"/>
     <document>
         <entity pk="Id" name="MyCore1" query="SELECT * FROM MyCore1;"/>
     </document>

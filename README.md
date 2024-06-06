@@ -1,39 +1,44 @@
-# Microsoft SQL Server & Solr Hybrid Container
+# Compose a Solr Server from a MSSQL Database
 
-This is the unholy love child of microsoft sql server and solr docker images
-
-At its core this is just the Dockerfile and scripts from github.com/docker-solr/docker-solr/tree/master/`version`/slim with the sql server as base image, [usql](https://github.com/xo/usql) added, and the minimal changes needed to make it all work on both intel and arm architectures.
-
-The objective of this container is to support the following build process:
-
-1. Start SQL Server
-2. Start Solr
-3. BCP data into the local SQL server from a file
-4. DIH import that data into a Solr core
-5. Copy that data from this build-container to an empty solr:8.9.0-slim container for deployment
+This project uses docker-compose to build one or more Solr search cores from data retrieved from a Microsoft SQL Server backup.
 
 ## Example Usage
 
-Setup an environment with the following folders
+Run the build script to build an example solr server container:
 
-- `data/` Contains the sql backup file to restore (in the following example it's named `solr_export.bak`)
-- `cores/` Contains the solr core definition folders (one folder for each core)
-  - In the example below the cores `MyCore1`,`MyCore2`,`MyCore3`, and `MyCore4` are loaded using the `wait-for-solr-load.sh` script included in this container
-  - This process uses Solr's [DataImportHandler](https://cwiki.apache.org/confluence/display/solr/dataimporthandler) so a DIH configuration must be a part of your solr core definition.
-    - Example `data-config.xml`
+```sh
+./build.sh
+```
 
-      ```xml
-      <?xml version="1.0" encoding="UTF-8" ?>
-      <dataConfig>
-          <dataSource driver="com.microsoft.sqlserver.jdbc.SQLServerDriver" url="jdbc:sqlserver://localhost;databaseName=solr_export;user=sa;password=P@ssword123;" batchSize="10000" responseBuffering="adaptive" selectMethod="cursor"/>
-          <document>
-              <entity pk="Id" name="MyDataTable" query="SELECT * FROM MyDataTable;"/>
-          </document>
-      </dataConfig>
-      ```
+To test the server we will run the resulting container the server of which will be available at [http://localhost:8983](http://localhost:8983).
 
-  - Create a Dockerfile similar to [this one](example/Dockerfile).
+```sh
+docker run --rm -it -p 8983:8983 solr-container
+```
 
-The build process will result in a runnable solr instance containing the data from SQL.
+## How it works
 
-An [example](example/build-example.sh) is available.
+The heart of this process lives in the [docker-compose.yaml](./docker-compose.yaml) which follows these steps:
+
+1. `mssql` gets the Microsoft SQL Server container and waits for it to be available
+   - The version comes from the `.env` file
+   - This step operates in parallel with the `solr` step
+2. `solr` gets the Solr server container and waits for it to be available
+   - The version comes from the `.env` file
+   - This step operates in parallel with the `mssql` step
+3. `step1_restore_db` restores the backed up MSSQL database file
+   - In the example it comes from `example/data/solr_export.bak`
+   - All other steps wait for this to complete
+4. The remaining `load_core` steps perform the actual data load from SQL to Solr
+   - Both these steps and the restore_db are the ones you want to modify for your project
+
+`build.sh` wraps teh docker compose process and adds building the final container.
+
+## How do I make this my own?
+
+1. Fork this repo
+2. Create your own cores and data (use the example folder as a base)
+   1. Edit `core.properties` to name your core
+   2. Edit `conf/data-config.xml` to modify the data load parameters
+3. Edit the `docker-compose.yaml` to make sure your core(s) load
+    - The `&load_core` and `<<: *load_core` statements help make the yaml easier to read by performing a "copy & paste" operation that allows for modification.

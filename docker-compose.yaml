@@ -1,0 +1,62 @@
+name: sql-solr
+
+services:
+  mssql:
+    image: ${MSSQL_IMAGE}
+    environment:
+      SA_PASSWORD: "P@ssword123"
+      ACCEPT_EULA: "Y"
+      MSSQL_MEMORY_LIMIT_MB: 1024
+    volumes:
+      - ./data/mssql/data:/var/opt/mssql/data
+      - ./data/mssql/log:/var/opt/mssql/log
+      - ./example/data:/data:ro
+    healthcheck:
+      test: [ "CMD", "/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", "P@ssword123", "-Q", "SELECT 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_interval: 30s
+
+  solr:
+    image: ${SOLR_IMAGE}
+    volumes:
+      - ./example/cores:/cores:ro
+      - ./data/solr:/var/solr/data
+      - ./jars/sqljdbc42.jar:/var/solr/lib/sqljdbc42.jar:ro
+      - ./scripts/copy-cores.sh:/docker-entrypoint-initdb.d/copy-cores.sh:ro
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8983/solr/admin/cores" ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  step1_restore_db:
+    image: mcr.microsoft.com/mssql-tools
+    volumes: [./scripts:/scripts:ro]
+    depends_on: { mssql: { condition: service_healthy } }
+    entrypoint: bash /scripts/restore-sql-db.sh
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "if [[ -f /tmp/restore.done ]]; then exit 0; else exit 1; fi" ]
+      interval: 10s
+      timeout: 1s
+      retries: 720 # wait for up to 2 hours
+      start_period: 30s
+
+  load_mycore1:
+    build:
+      context: .
+      dockerfile: net-tools.dockerfile
+    volumes: [./scripts/wait-for-solr-load.sh:/scripts/wait-for-solr-load.sh:ro]
+    depends_on:
+      solr: { condition: service_healthy }
+      mssql: { condition: service_healthy }
+      step1_restore_db: { condition: service_healthy }
+    entrypoint: [bash, /scripts/wait-for-solr-load.sh, MyCore1]
+    labels:
+      - "core_loader=true"
+
+  load_mycore2:
+    <<: *load_core
+    entrypoint: [bash, /scripts/wait-for-solr-load.sh, MyCore2]

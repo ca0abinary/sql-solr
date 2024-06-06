@@ -1,4 +1,4 @@
-FROM sql-solr AS build
+FROM ca0abinary/sql-solr:latest AS build
 ARG  ACCEPT_EULA=Y
 ARG  SA_PASSWORD=P@ssword123
 ARG  MSSQL_MEMORY_LIMIT_MB=1024
@@ -21,5 +21,5 @@ RUN  set -xe \
   && solr stop \
   && chown -R solr:solr /var/solr
 
-FROM solr:8.11.1-slim
+FROM solr:8.11.3-slim
 COPY --from=build /var/solr /var/solr

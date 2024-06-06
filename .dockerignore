@@ -1,1 +1,5 @@
+.git/
 example/
+jars/
+scripts/
+*.*
